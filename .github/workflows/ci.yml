@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      # -------------------------------------------------------
+      # Checkout source code
+      # -------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------------
+      # Install uv
+      # -------------------------------------------------------
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      # -------------------------------------------------------
+      # Install exact dependencies from uv.lock
+      # -------------------------------------------------------
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # -------------------------------------------------------
+      # Run backend tests
+      # -------------------------------------------------------
+      - name: Run pytest
+        run: uv run pytest
+
+  frontend-test:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      # -------------------------------------------------------
+      # Checkout source code
+      # -------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------------
+      # Install Node.js
+      # -------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # -------------------------------------------------------
+      # Install exact dependencies
+      # -------------------------------------------------------
+      - name: Install dependencies
+        run: npm ci
+
+      # -------------------------------------------------------
+      # Build frontend
+      # -------------------------------------------------------
+      - name: Build frontend
+        run: npm run build
