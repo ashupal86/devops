@@ -75,25 +75,75 @@ Thumbs.db
 logs/
 
 
+
+# ============================================================
+# TERRAFORM
+# ============================================================
+#
+# State holds the generated RDS password and every resource ID,
+# plans can embed secrets, and tfvars are per-machine settings.
+# terraform.tfvars.example and .terraform.lock.hcl stay tracked
+# (the lock file pins provider versions for everyone).
+# ============================================================
+
 .terraform/
+.terraform.tfstate.lock.info
 
 *.tfstate
 *.tfstate.*
 
 *.tfvars
 *.tfvars.json
+!*.tfvars.example
 
 *.tfplan
+*.tfplan.json
 plan.out
+*.plan
 
 crash.log
 crash.*.log
 
 override.tf
 override.tf.json
-
 *_override.tf
 *_override.tf.json
 
 .terraformrc
 terraform.rc
+
+
+# ============================================================
+# KUBERNETES / AWS LOCAL FILES
+# ============================================================
+
+kubeconfig
+*.kubeconfig
+.kube/
+.aws/
+
+
+# ============================================================
+# BUILD / TOOL OUTPUT
+# ============================================================
+
+dist/
+build/
+*.egg-info/
+*.tsbuildinfo
+.vite/
+.eslintcache
+.claude/settings.local.json
+
+*.swp
+*~
+
+
+# ============================================================
+# LOAD TEST REPORTS
+# ============================================================
+#
+# Contain the edit tokens of the test accounts they created.
+# ============================================================
+
+loadtest-reports/
