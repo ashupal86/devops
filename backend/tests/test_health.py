@@ -14,7 +14,7 @@ def test_ready_when_db_up(client):
 
 
 def test_ready_when_db_down(client):
-    with patch("app.main.engine.connect", side_effect=RuntimeError("db down")):
+    with patch("app.main.probe_engine.connect", side_effect=RuntimeError("db down")):
         res = client.get("/api/ready")
     assert res.status_code == 503
 

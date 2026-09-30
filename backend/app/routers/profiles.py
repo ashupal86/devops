@@ -23,6 +23,20 @@ router = APIRouter(prefix="/api/profiles", tags=["profiles"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+def _release(db: Session) -> None:
+    """Return the session's connection to the pool before the handler returns.
+
+    For a sync route FastAPI serializes the response in the shared
+    threadpool, and get_db only closes the session after that. Under
+    load every thread was blocked waiting for a pooled connection while
+    the requests holding connections waited for a thread to serialize
+    their response, so the pool ran dry with RDS idle. Profile has only
+    column attributes, so the detached instance serializes without the
+    session.
+    """
+    db.close()
+
+
 def _find(db: Session, tag: str) -> Profile | None:
     return db.scalar(select(Profile).where(Profile.tag == normalize_tag(tag)))
 
@@ -53,7 +67,9 @@ def check_tag(tag: str, db: DbSession) -> TagAvailability:
         normalized = validate_tag(tag)
     except ValueError as exc:
         return TagAvailability(tag=normalize_tag(tag), available=False, reason=str(exc))
-    if _find(db, normalized) is not None:
+    taken = _find(db, normalized) is not None
+    _release(db)
+    if taken:
         return TagAvailability(tag=normalized, available=False, reason="already taken")
     return TagAvailability(tag=normalized, available=True)
 
@@ -79,12 +95,15 @@ def create_profile(payload: ProfileCreate, db: DbSession) -> ProfileCreated:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Tag already taken")
     db.refresh(profile)
+    _release(db)
     return ProfileCreated(profile=ProfileOut.model_validate(profile), edit_token=token)
 
 
 @router.get("/{tag}", response_model=ProfileOut)
 def get_profile(tag: str, db: DbSession) -> Profile:
-    return _get_or_404(db, tag)
+    profile = _get_or_404(db, tag)
+    _release(db)
+    return profile
 
 
 @router.put("/{tag}", response_model=ProfileOut)
@@ -98,6 +117,7 @@ def update_profile(
     profile.links = [link.model_dump() for link in payload.links]
     db.commit()
     db.refresh(profile)
+    _release(db)
     return profile
 
 

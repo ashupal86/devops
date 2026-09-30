@@ -48,6 +48,22 @@ class Settings:
     )
 
     # ---------------------------------------------------------
+    # Connection pool (PostgreSQL only)
+    #
+    # Kept small per pod: the HPA can run up to 8 backend pods
+    # against a db.t4g.micro, whose max_connections is ~80.
+    # 8 pods x (5 + 3) = 64 connections at most.
+    # ---------------------------------------------------------
+
+    db_pool_size: int = field(
+        default_factory=lambda: int(os.getenv("DB_POOL_SIZE", "5"))
+    )
+
+    db_max_overflow: int = field(
+        default_factory=lambda: int(os.getenv("DB_MAX_OVERFLOW", "3"))
+    )
+
+    # ---------------------------------------------------------
     # CORS
     # ---------------------------------------------------------
 
