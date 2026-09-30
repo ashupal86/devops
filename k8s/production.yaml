@@ -1,0 +1,316 @@
+# =============================================================
+# PRODUCTION MANIFESTS
+# =============================================================
+#
+# The namespace and the backend-database secret (DATABASE_URL
+# pointing at RDS) are created by Terraform in
+# infra/terraform/app_bootstrap.tf. Apply Terraform first.
+#
+# BACKEND_IMAGE_PLACEHOLDER / FRONTEND_IMAGE_PLACEHOLDER are
+# replaced with ECR image URIs at deploy time.
+# =============================================================
+
+# =============================================================
+# BACKEND DEPLOYMENT
+# =============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: social-links
+
+spec:
+  # Start with one pod. The HPA below adds more under load.
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+      # Spread replicas across the two nodes (and AZs) once the
+      # HPA scales past one pod.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: backend
+
+      containers:
+        - name: backend
+
+          image: BACKEND_IMAGE_PLACEHOLDER
+
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8000
+
+          # ---------------------------------------------------
+          # DATABASE_URL -> Amazon RDS (Terraform-managed secret)
+          # ---------------------------------------------------
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backend-database
+                  key: DATABASE_URL
+
+            # Browsers reach the API through nginx on the same
+            # origin, so no cross-origin callers are allowed.
+            - name: CORS_ORIGINS
+              value: ""
+
+          # ---------------------------------------------------
+          # Resource limits
+          #
+          # These are deliberately small for the budget.
+          # Increase after measuring actual usage.
+          # ---------------------------------------------------
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          # ---------------------------------------------------
+          # Health checks
+          #
+          # Readiness checks RDS, so a pod only receives traffic
+          # once it can reach the database.
+          # ---------------------------------------------------
+
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: 8000
+
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+---
+# =============================================================
+# BACKEND SERVICE
+# =============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: social-links
+
+spec:
+  # Backend does NOT need a public AWS Load Balancer.
+  #
+  # Nginx/frontend will reach:
+  #
+  # http://backend:8000
+  #
+  type: ClusterIP
+
+  selector:
+    app: backend
+
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+
+---
+# =============================================================
+# FRONTEND DEPLOYMENT
+# =============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: social-links
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: frontend
+
+  template:
+    metadata:
+      labels:
+        app: frontend
+
+    spec:
+      # Prefer the node that is not running the backend, so the
+      # two nodes start with one application pod each.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: backend
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: frontend
+
+      containers:
+        - name: frontend
+
+          image: FRONTEND_IMAGE_PLACEHOLDER
+
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 80
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+
+            initialDelaySeconds: 2
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+
+            initialDelaySeconds: 10
+            periodSeconds: 20
+
+---
+# =============================================================
+# FRONTEND SERVICE
+# =============================================================
+#
+# The AWS Load Balancer Controller turns this into an
+# internet-facing Network Load Balancer that sends traffic
+# straight to the pod IPs.
+# =============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: social-links
+
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /healthz
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: HTTP
+
+spec:
+  type: LoadBalancer
+
+  selector:
+    app: frontend
+
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+
+---
+# =============================================================
+# HORIZONTAL POD AUTOSCALERS
+# =============================================================
+#
+# Pods scale on CPU (metrics-server is installed by Terraform).
+# Both nodes together fit a few extra replicas. Beyond that,
+# raise node_desired_size in terraform.tfvars.
+# =============================================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend
+  namespace: social-links
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+
+  minReplicas: 1
+
+  maxReplicas: 3
+
+  metrics:
+    - type: Resource
+
+      resource:
+        name: cpu
+
+        target:
+          type: Utilization
+
+          averageUtilization: 70
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend
+  namespace: social-links
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+
+  minReplicas: 1
+
+  maxReplicas: 2
+
+  metrics:
+    - type: Resource
+
+      resource:
+        name: cpu
+
+        target:
+          type: Utilization
+
+          averageUtilization: 70
