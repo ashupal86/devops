@@ -65,10 +65,34 @@ cd infra/terraform
 cp terraform.tfvars.example terraform.tfvars   # first time only
 terraform init && terraform apply              # ~15-20 min: VPC, EKS (2 nodes), RDS, ECR, LB controller
 ../scripts/deploy.sh                           # build + push images, apply k8s/production.yaml, print the URL
-../scripts/destroy.sh                          # delete the load balancer, then everything else
+../scripts/destroy.sh                          # delete the load balancer, terraform destroy, then sweep leftovers
+../scripts/destroy.sh --dry-run                # list what would be deleted; --yes skips the prompt
 ```
 
 Terraform writes `DATABASE_URL` for the RDS instance into the `backend-database` secret, so the backend always uses that database. The stack costs roughly $0.21/hour (about $5/day) in `ap-south-1`, so destroy it when you finish testing.
+
+## Load test the autoscaling
+
+`infra/scripts/eks-load-test.py` creates random test profiles, runs `hey` against them (100,000 requests, 500 concurrent by default) and samples the backend pods, the HPA and `kubectl top` throughout. It then writes a PDF report with the accounts it created, the hey results, and each backend pod: when it was created, when it became ready, which node it ran on, and its peak CPU and memory.
+
+```bash
+./infra/scripts/eks-load-test.py                        # URL taken from the frontend load balancer
+./infra/scripts/eks-load-test.py --accounts 100 --cleanup
+./infra/scripts/eks-load-test.py -c 500 -z 5m           # run for 5 minutes instead of a request count
+```
+
+Needs `uv`, `hey` and `kubectl` configured for the cluster. Reports go to `loadtest-reports/<timestamp>/` (gitignored, because `accounts.json` holds the edit tokens). The backend HPA allows at most 3 replicas.
+
+## Status console
+
+`console/server.py` is a local web console at <http://127.0.0.1:8088/status>. It starts and stops the load test and streams its output, and it lists past reports with their PDF, chart and log. It also shows backend observability (pods, HPA, CPU and memory, requests/s, 5xx/s, p50/p95/p99 latency, DB pool usage per pod) and database observability (`pg_stat_*` connections, TPS, cache hit ratio and table stats, plus RDS CloudWatch metrics and alarms).
+
+```bash
+./console/server.py                   # uses your kubectl context; AWS profile taken from kubeconfig
+./console/server.py --profile my-sso  # or pick the AWS profile explicitly
+```
+
+The backend serves `/metrics` and `/metrics/db` outside `/api`, so nginx does not expose them publicly. The console reads them through the Kubernetes API server proxy. If AWS shows "no credentials", run `aws sso login --profile <profile>`.
 
 ## Known gaps
 
