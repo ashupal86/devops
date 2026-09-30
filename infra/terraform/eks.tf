@@ -111,6 +111,18 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = 1
   }
 
+  # The Cluster Autoscaler owns the node count between min_size
+  # and max_size. Without this, every apply would reset it.
+  # EKS tags the node group's ASG with
+  # k8s.io/cluster-autoscaler/enabled and
+  # k8s.io/cluster-autoscaler/<cluster>, which is how the
+  # autoscaler discovers it.
+  lifecycle {
+    ignore_changes = [
+      scaling_config[0].desired_size
+    ]
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.eks_worker_node,
     aws_iam_role_policy_attachment.eks_cni,

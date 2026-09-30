@@ -33,9 +33,11 @@ variable "node_instance_types" {
 }
 
 # Two nodes in two AZs so a node failure does not take the app
-# down. There is no Cluster Autoscaler, so max_size only caps
-# manual scaling; pods scale with the HPA inside these nodes.
-# A new account's on-demand vCPU quota (5) fits only 2 x t3.small.
+# down. The Cluster Autoscaler adds nodes up to max_size when
+# pods are Pending and removes underused ones down to min_size.
+# A new account's on-demand vCPU quota (5) fits only 2 x t3.small;
+# request an increase of "Running On-Demand Standard instances"
+# before raising max_size, or scale-up will fail at the ASG.
 variable "node_min_size" {
   description = "Minimum worker nodes."
   type        = number
@@ -51,7 +53,7 @@ variable "node_desired_size" {
 variable "node_max_size" {
   description = "Maximum worker nodes."
   type        = number
-  default     = 2
+  default     = 4
 }
 
 variable "k8s_namespace" {

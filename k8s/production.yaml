@@ -21,8 +21,9 @@ metadata:
   namespace: social-links
 
 spec:
-  # Start with one pod. The HPA below adds more under load.
-  replicas: 1
+  # Two pods (one per node/AZ) at rest. The HPA below adds more
+  # under load and scales back to two when it drops.
+  replicas: 2
 
   selector:
     matchLabels:
@@ -70,27 +71,46 @@ spec:
             - name: CORS_ORIGINS
               value: ""
 
+            # 8 pods x (5 + 3) = 64 connections, plus one short-lived
+            # readiness-probe connection per pod (72), under the
+            # ~80 max_connections of a db.t4g.micro.
+            - name: DB_POOL_SIZE
+              value: "5"
+
+            - name: DB_MAX_OVERFLOW
+              value: "3"
+
           # ---------------------------------------------------
-          # Resource limits
+          # Resources
           #
-          # These are deliberately small for the budget.
-          # Increase after measuring actual usage.
+          # The HPA target is a percentage of the request, so the
+          # request must be close to real per-pod usage. With a
+          # 100m request and a 500m limit the pods were throttled
+          # at 480m while the HPA read that as 480%.
+          #
+          # One uvicorn process can use about one core (GIL), so
+          # the limit is 1000m. Scale-out comes from more pods.
           # ---------------------------------------------------
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "250m"
+              memory: "160Mi"
 
             limits:
-              cpu: "500m"
-              memory: "256Mi"
+              cpu: "1000m"
+              memory: "320Mi"
 
           # ---------------------------------------------------
           # Health checks
           #
           # Readiness checks RDS, so a pod only receives traffic
           # once it can reach the database.
+          #
+          # The default 1 s timeout failed under load: pods were
+          # pulled from the Service (502s) and restarted by the
+          # liveness probe, which cascaded onto the other pods.
+          # Liveness now tolerates about a minute of slowness.
           # ---------------------------------------------------
 
           readinessProbe:
@@ -100,6 +120,8 @@ spec:
 
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
 
           livenessProbe:
             httpGet:
@@ -107,7 +129,36 @@ spec:
               port: 8000
 
             initialDelaySeconds: 15
-            periodSeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+      # Let in-flight requests finish when the HPA or Cluster
+      # Autoscaler removes a pod.
+      terminationGracePeriodSeconds: 30
+
+---
+# =============================================================
+# BACKEND POD DISRUPTION BUDGET
+# =============================================================
+#
+# When the Cluster Autoscaler drains an underused node it evicts
+# pods one at a time and never below this, so scale-down cannot
+# take the backend fully offline.
+# =============================================================
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend
+  namespace: social-links
+
+spec:
+  minAvailable: 1
+
+  selector:
+    matchLabels:
+      app: backend
 
 ---
 # =============================================================
@@ -256,8 +307,14 @@ spec:
 # =============================================================
 #
 # Pods scale on CPU (metrics-server is installed by Terraform).
-# Both nodes together fit a few extra replicas. Beyond that,
-# raise node_desired_size in terraform.tfvars.
+#
+# Scale-up is fast (double, or +4 pods, every 15 s). Scale-down
+# waits for 3 minutes of low CPU, then removes at most half the
+# pods per minute, back to minReplicas.
+#
+# Pods that do not fit on the current nodes stay Pending; the
+# Cluster Autoscaler (infra/terraform/cluster_autoscaler.tf)
+# adds a node for them and removes nodes that sit underused.
 # =============================================================
 
 apiVersion: autoscaling/v2
@@ -272,9 +329,9 @@ spec:
     kind: Deployment
     name: backend
 
-  minReplicas: 1
+  minReplicas: 2
 
-  maxReplicas: 3
+  maxReplicas: 8
 
   metrics:
     - type: Resource
@@ -286,6 +343,31 @@ spec:
           type: Utilization
 
           averageUtilization: 70
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+
+      selectPolicy: Max
+
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+
+    scaleDown:
+      stabilizationWindowSeconds: 180
+
+      selectPolicy: Min
+
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 
 ---
 apiVersion: autoscaling/v2
@@ -314,3 +396,7 @@ spec:
           type: Utilization
 
           averageUtilization: 70
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180

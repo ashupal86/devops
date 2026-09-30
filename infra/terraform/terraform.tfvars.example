@@ -14,7 +14,7 @@ node_instance_types = [
 
 node_min_size     = 2
 node_desired_size = 2
-node_max_size     = 2
+node_max_size     = 4 # needs a vCPU quota of 8+
 
 database_name = "social_links"
 
