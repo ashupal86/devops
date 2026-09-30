@@ -1,0 +1,36 @@
+aws_region = "ap-south-1"
+
+project_name = "social-links"
+
+environment = "prod"
+
+# Check the EKS-supported version in your AWS region/account
+# before applying.
+eks_version = "1.36"
+
+node_instance_types = [
+  "t3.small"
+]
+
+node_min_size     = 2
+node_desired_size = 2
+node_max_size     = 2
+
+database_name = "social_links"
+
+database_username = "social_links_admin"
+
+database_instance_class = "db.t4g.micro"
+
+database_allocated_storage = 20
+
+# IMPORTANT:
+# Change this to your actual GitHub repository.
+#
+# Example:
+#
+# github_repository = "john/social-links"
+#
+# Leave empty to deploy from your machine with
+# infra/scripts/deploy.sh. Set it to enable GitHub Actions.
+github_repository = ""
