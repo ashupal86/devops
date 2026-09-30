@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>social-links status</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f0efec;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --shade: rgba(42,120,214,0.08);
+  --accent: #2a78d6; --accent-ink: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --shade: rgba(57,135,229,0.14);
+    --accent: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --shade: rgba(57,135,229,0.14);
+  --accent: #3987e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--page);
+  border-bottom: 1px solid var(--border); }
+.bar { max-width: 1280px; margin: 0 auto; padding: 12px 16px 0; }
+.top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+h1 { font-size: 17px; margin: 0; font-weight: 650; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.chip { border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px;
+  background: var(--surface); white-space: nowrap; }
+.chip b { color: var(--ink); font-weight: 600; }
+nav { display: flex; gap: 2px; margin-top: 10px; overflow-x: auto; }
+nav button { background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--ink-2); padding: 8px 12px; font: inherit; cursor: pointer; white-space: nowrap; }
+nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+main { max-width: 1280px; margin: 0 auto; padding: 16px; }
+section[hidden] { display: none; }
+h2 { font-size: 15px; margin: 22px 0 10px; font-weight: 650; }
+h2:first-child { margin-top: 0; }
+.muted { color: var(--muted); }
+.sub { color: var(--ink-2); font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.grid2 { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
+.tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.tile .k { font-size: 12px; color: var(--ink-2); }
+.tile .v { font-size: 24px; font-weight: 600; margin-top: 2px; }
+.tile .d { font-size: 12px; color: var(--muted); }
+.chart h3 { font-size: 13px; font-weight: 600; margin: 0; }
+.chart .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+.chart .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.chart .plot { position: relative; height: 180px; margin-top: 8px; }
+.chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.chart .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12); white-space: nowrap; z-index: 3; }
+.tip .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+tr.click { cursor: pointer; }
+tr.click:hover td, tr.sel td { background: var(--surface-2); }
+.status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.st-good { color: var(--good); } .st-warn { color: #b57f00; } .st-serious { color: var(--serious); } .st-critical { color: var(--critical); }
+.st-muted { color: var(--muted); }
+form.run { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+label { display: grid; gap: 3px; font-size: 12px; color: var(--ink-2); }
+input[type=text], input[type=number], select { font: inherit; color: var(--ink); background: var(--page);
+  border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; width: 100%; }
+label.check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); }
+.btn { font: inherit; border-radius: 6px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--ink); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn.danger { color: var(--critical); border-color: var(--critical); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+pre.log { margin: 0; background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px; height: 340px; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap; word-break: break-all; }
+.err { color: var(--critical); font-size: 13px; }
+.note { font-size: 13px; color: var(--ink-2); background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+.two { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+@media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+img.report { width: 100%; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+a { color: var(--accent); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 13px; }
+.kv dt { color: var(--ink-2); } .kv dd { margin: 0; }
+.range { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); margin-bottom: 10px; flex-wrap: wrap; }
+.range select { width: auto; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="top">
+      <h1>social-links status</h1>
+      <div class="chips" id="env"><span class="chip">loading…</span></div>
+      <span id="runpill" class="chip" style="margin-left:auto"></span>
+    </div>
+    <nav role="tablist">
+      <button role="tab" data-tab="backend" aria-selected="true">Backend</button>
+      <button role="tab" data-tab="database">Database</button>
+      <button role="tab" data-tab="loadtest">Load test</button>
+      <button role="tab" data-tab="reports">Reports</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ================================================= BACKEND -->
+<section id="backend">
+  <div class="tiles" id="be-tiles"></div>
+  <p class="err" id="be-err"></p>
+  <h2>Last hour <span class="sub">· sampled every 5 s · shaded = load test from this console</span></h2>
+  <div class="grid2">
+    <div class="card chart" id="c-pods"></div>
+    <div class="card chart" id="c-cpu"></div>
+    <div class="card chart" id="c-rps"></div>
+    <div class="card chart" id="c-lat"></div>
+    <div class="card chart" id="c-pool"></div>
+    <div class="card chart" id="c-mem"></div>
+  </div>
+  <h2>Backend pods</h2>
+  <div class="card scroll"><table id="be-pods"></table></div>
+  <h2>Requests by route <span class="sub">· since each pod started</span></h2>
+  <div class="card scroll"><table id="be-routes"></table></div>
+</section>
+
+<!-- ================================================= DATABASE -->
+<section id="database" hidden>
+  <div class="tiles" id="db-tiles"></div>
+  <p class="err" id="db-err"></p>
+  <h2>PostgreSQL <span class="sub">· from pg_stat_* through the backend, every 15 s</span></h2>
+  <div class="grid2">
+    <div class="card chart" id="c-tps"></div>
+    <div class="card chart" id="c-conns"></div>
+    <div class="card chart" id="c-rows"></div>
+    <div class="card chart" id="c-hit"></div>
+  </div>
+  <h2>Tables</h2>
+  <div class="card scroll"><table id="db-tables"></table></div>
+
+  <h2>RDS CloudWatch</h2>
+  <div class="range">Window
+    <select id="rds-min">
+      <option value="30">30 min</option><option value="60" selected>1 hour</option>
+      <option value="180">3 hours</option><option value="720">12 hours</option><option value="1440">24 hours</option>
+    </select>
+    <span id="rds-period" class="muted"></span>
+  </div>
+  <p class="err" id="rds-err"></p>
+  <div class="grid2" style="margin-bottom:12px">
+    <div class="card"><dl class="kv" id="rds-inst"></dl></div>
+    <div class="card scroll"><table id="rds-alarms"></table></div>
+  </div>
+  <div class="grid2">
+    <div class="card chart" id="r-cpu"></div>
+    <div class="card chart" id="r-conn"></div>
+    <div class="card chart" id="r-mem"></div>
+    <div class="card chart" id="r-iops"></div>
+    <div class="card chart" id="r-lat"></div>
+    <div class="card chart" id="r-net"></div>
+    <div class="card chart" id="r-queue"></div>
+    <div class="card chart" id="r-disk"></div>
+  </div>
+</section>
+
+<!-- ================================================= LOAD TEST -->
+<section id="loadtest" hidden>
+  <div class="two">
+    <div class="card">
+      <h2>Run eks-load-test.py</h2>
+      <form class="run" id="runform">
+        <label style="grid-column:1/-1">Target URL <input type="text" name="url" placeholder="blank = frontend load balancer from kubectl"></label>
+        <label>Accounts <input type="number" name="accounts" value="50" min="1" max="1000"></label>
+        <label>Concurrency (-c) <input type="number" name="concurrency" value="500" min="1" max="5000"></label>
+        <label>Requests (-n) <input type="number" name="requests" value="100000" min="100"></label>
+        <label>Duration (-z) <input type="text" name="duration" placeholder="e.g. 5m, overrides -n"></label>
+        <label>Target accounts <input type="number" name="targets" value="5" min="1" max="50"></label>
+        <label>Baseline (s) <input type="number" name="baseline" value="15" min="0"></label>
+        <label>Cooldown (s) <input type="number" name="cooldown" value="60" min="0"></label>
+        <label class="check" style="grid-column:1/-1"><input type="checkbox" name="cleanup" checked> Delete test accounts afterwards</label>
+      </form>
+      <div class="actions">
+        <button class="btn primary" id="start">Start load test</button>
+        <button class="btn danger" id="stop" hidden>Stop</button>
+        <span id="run-msg" class="sub"></span>
+      </div>
+      <p class="note" style="margin-top:12px">Runs on this machine with your <code>kubectl</code> context and <code>hey</code>. Runs keep going if you restart the console, and it re-attaches to them. Stopping kills hey and the script, so no PDF is written for that run.</p>
+      <div class="tiles" id="run-tiles" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Output <span class="sub" id="run-cmd"></span></h2>
+      <pre class="log" id="log"><span class="muted">No load test started from this console yet.</span></pre>
+    </div>
+  </div>
+  <h2>Live while it runs</h2>
+  <div class="grid2">
+    <div class="card chart" id="l-pods"></div>
+    <div class="card chart" id="l-rps"></div>
+  </div>
+</section>
+
+<!-- ================================================= REPORTS -->
+<section id="reports" hidden>
+  <div class="card scroll"><table id="rep-list"></table></div>
+  <div id="rep-detail"></div>
+</section>
+</main>
+
+<script>
+const API = "/status/api";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const S = ["--s1", "--s2", "--s3"];
+
+async function get(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.json();
+}
+
+// ------------------------------------------------------------- formatting
+const fmt = {
+  n: (v, d = 0) => v == null || isNaN(v) ? "–" : Number(v).toLocaleString(undefined, {maximumFractionDigits: d, minimumFractionDigits: 0}),
+  ms: v => v == null ? "–" : v >= 1000 ? (v / 1000).toFixed(2) + " s" : Math.round(v) + " ms",
+  pct: v => v == null ? "–" : Math.round(v) + "%",
+  bytes: v => {
+    if (v == null) return "–";
+    const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0;
+    while (Math.abs(v) >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " " + u[i];
+  },
+  time: t => t ? new Date(t).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"}) : "–",
+  dt: t => t ? new Date(t).toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}) : "–",
+  age: t => {
+    if (!t) return "–";
+    const s = (Date.now() - new Date(t)) / 1000;
+    return s < 90 ? Math.round(s) + "s" : s < 5400 ? Math.round(s / 60) + "m" : s < 172800 ? Math.round(s / 3600) + "h" : Math.round(s / 86400) + "d";
+  },
+};
+
+// ------------------------------------------------------------- line chart
+// series: [{name, color: "--s1", points: [[Date|iso, value], ...]}]
+// opts: {title, sub, y: formatter, ref: {value, label}, max, shade: [[t0, t1]]}
+function niceTicks(max, n = 4) {
+  if (!(max > 0)) return [0, 1];
+  const raw = max / n, mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw);
+  const ticks = [];
+  for (let v = 0; v <= max + step * 1e-9; v += step) ticks.push(+v.toFixed(10));
+  if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+  return ticks;
+}
+
+function chart(el, series, opts = {}) {
+  const yf = opts.y || (v => fmt.n(v, 1));
+  series = series.map(s => ({...s, points: s.points.filter(p => p[1] != null).map(p => [new Date(p[0]), +p[1]])}));
+  const legend = series.length > 1
+    ? `<div class="legend">${series.map(s => `<span><i style="background:var(${s.color})"></i>${esc(s.name)}</span>`).join("")}</div>` : "";
+  el.innerHTML = `<h3>${esc(opts.title)}</h3>${opts.sub ? `<div class="sub">${esc(opts.sub)}</div>` : ""}${legend}<div class="plot"></div>`;
+  const plot = $(".plot", el);
+  const all = series.flatMap(s => s.points);
+  if (all.length < 2) { plot.innerHTML = `<div class="empty">${esc(opts.empty || "No data yet")}</div>`; return; }
+
+  const W = plot.clientWidth || 400, H = plot.clientHeight || 180;
+  const yVals = all.map(p => p[1]).concat(opts.ref ? [opts.ref.value] : []);
+  const ticks = niceTicks(Math.max(opts.max ?? 0, ...yVals));
+  const yMax = ticks[ticks.length - 1];
+  const tickLabels = ticks.map(yf);
+  const L = Math.max(...tickLabels.map(t => t.length)) * 6.6 + 10, R = 8, T = 6, B = 22;
+  let t0 = Math.min(...all.map(p => +p[0])), t1 = Math.max(...all.map(p => +p[0]));
+  if (opts.from) t0 = Math.min(t0, +opts.from);
+  if (t1 === t0) t1 = t0 + 1;
+  const x = t => L + (W - L - R) * (+t - t0) / (t1 - t0);
+  const y = v => T + (H - T - B) * (1 - v / yMax);
+
+  const muted = css("--muted");
+  let svg = "";
+  for (const [a, b] of opts.shade || []) {
+    const xa = x(Math.max(+new Date(a), t0)), xb = x(Math.min(+new Date(b || Date.now()), t1));
+    if (xb > xa) svg += `<rect x="${xa}" y="${T}" width="${xb - xa}" height="${H - T - B}" fill="var(--shade)"/>`;
+  }
+  ticks.forEach((v, i) => {
+    svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(${i ? "--grid" : "--axis"})" stroke-width="1"/>`;
+    svg += `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="${muted}" style="font-variant-numeric:tabular-nums">${esc(tickLabels[i])}</text>`;
+  });
+  const span = t1 - t0, nx = Math.max(2, Math.min(6, Math.floor((W - L) / 90)));
+  for (let i = 0; i <= nx; i++) {
+    const t = t0 + span * i / nx;
+    const d = new Date(t);
+    const lab = span > 36 * 3600e3 ? d.toLocaleDateString([], {month: "short", day: "numeric"}) + " " + d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})
+      : d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    svg += `<text x="${x(t)}" y="${H - 5}" text-anchor="${i === 0 ? "start" : i === nx ? "end" : "middle"}" font-size="11" fill="${muted}">${esc(lab)}</text>`;
+  }
+  if (opts.ref) {
+    svg += `<line x1="${L}" x2="${W - R}" y1="${y(opts.ref.value)}" y2="${y(opts.ref.value)}" stroke="${muted}" stroke-dasharray="3 3"/>`;
+    svg += `<text x="${W - R}" y="${y(opts.ref.value) - 4}" text-anchor="end" font-size="11" fill="${muted}">${esc(opts.ref.label)}</text>`;
+  }
+  for (const s of series) {
+    if (!s.points.length) continue;
+    const d = s.points.map((p, i) => {
+      const px = x(p[0]).toFixed(1), py = y(p[1]).toFixed(1);
+      return i ? (s.step ? `H${px}V${py}` : `L${px},${py}`) : `M${px},${py}`;
+    }).join("");
+    svg += `<path d="${d}" fill="none" stroke="var(${s.color})" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  svg += `<line class="xh" y1="${T}" y2="${H - B}" stroke="${muted}" stroke-width="1" visibility="hidden"/>`;
+  series.forEach((s, i) => svg += `<circle class="dot${i}" r="4" fill="var(${s.color})" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`);
+  plot.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.title)}">${svg}</svg><div class="tip" hidden></div>`;
+
+  const svgEl = $("svg", plot), tip = $(".tip", plot), xh = $(".xh", svgEl);
+  const hide = () => { xh.setAttribute("visibility", "hidden"); tip.hidden = true; series.forEach((_, i) => $(".dot" + i, svgEl).setAttribute("visibility", "hidden")); };
+  plot.addEventListener("pointerleave", hide);
+  plot.addEventListener("pointermove", ev => {
+    const r = svgEl.getBoundingClientRect(), mx = (ev.clientX - r.left) * W / r.width;
+    if (mx < L || mx > W - R) return hide();
+    const t = t0 + (mx - L) / (W - L - R) * (t1 - t0);
+    let rows = "", anchor = null;
+    series.forEach((s, i) => {
+      const dot = $(".dot" + i, svgEl);
+      if (!s.points.length) return dot.setAttribute("visibility", "hidden");
+      let best = s.points[0];
+      for (const p of s.points) if (Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p;
+      anchor = anchor || best[0];
+      dot.setAttribute("cx", x(best[0])); dot.setAttribute("cy", y(best[1])); dot.setAttribute("visibility", "visible");
+      rows += `<div class="row"><span><i style="background:var(${s.color})"></i>${esc(s.name)}</span><b>${esc(yf(best[1]))}</b></div>`;
+    });
+    if (!anchor) return hide();
+    xh.setAttribute("x1", x(anchor)); xh.setAttribute("x2", x(anchor)); xh.setAttribute("visibility", "visible");
+    tip.innerHTML = `<div class="muted">${esc(fmt.time(anchor))}</div>${rows}`;
+    tip.hidden = false;
+    const px = x(anchor) * r.width / W;
+    tip.style.left = (px > r.width / 2 ? px - tip.offsetWidth - 12 : px + 12) + "px";
+    tip.style.top = "4px";
+  });
+}
+
+function tiles(el, items) {
+  el.innerHTML = items.map(([k, v, d]) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</div>`).join("");
+}
+
+function table(el, head, rows, numeric = []) {
+  el.innerHTML = `<thead><tr>${head.map((h, i) => `<th class="${numeric.includes(i) ? "num" : ""}">${esc(h)}</th>`).join("")}</tr></thead>
+    <tbody>${rows.length ? rows.map(r => `<tr>${r.map((c, i) => `<td class="${numeric.includes(i) ? "num" : ""}">${c}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${head.length}" class="muted">Nothing to show.</td></tr>`}</tbody>`;
+}
+
+// ------------------------------------------------------------- tabs
+let tab = "backend";
+try { tab = localStorage.getItem("status-tab") || tab; } catch {}
+function showTab(name) {
+  tab = name;
+  document.querySelectorAll("nav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name));
+  document.querySelectorAll("main > section").forEach(s => s.hidden = s.id !== name);
+  try { localStorage.setItem("status-tab", name); } catch {}
+  render();
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+// ------------------------------------------------------------- state + polling
+const state = {env: null, backend: null, database: null, rds: null, run: null, reports: null, report: null};
+const runWindows = () => state.run ? [[state.run.started, state.run.ended]] : [];
+
+async function poll(key, path, every) {
+  const tick = async () => {
+    try { state[key] = await get(typeof path === "function" ? path() : path); state[key + "Err"] = null; }
+    catch (e) { state[key + "Err"] = e.message; }
+    render();
+  };
+  await tick();
+  return setInterval(tick, every);
+}
+
+function render() {
+  renderEnv();
+  if (tab === "backend") renderBackend();
+  if (tab === "database") renderDatabase();
+  if (tab === "loadtest") renderLoadtest();
+  if (tab === "reports") renderReports();
+}
+addEventListener("resize", () => { clearTimeout(window._rs); window._rs = setTimeout(render, 150); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+function renderEnv() {
+  const e = state.env;
+  if (!e) return;
+  const tool = t => e.tools[t] ? "" : `<span class="chip st-critical">${t} missing</span>`;
+  $("#env").innerHTML = `<span class="chip">kube <b>${esc(e.context || "none")}</b></span>
+    <span class="chip">ns <b>${esc(e.namespace)}</b></span>
+    <span class="chip">RDS <b>${esc(e.rds_id)}</b> · ${esc(e.region)}</span>
+    <span class="chip">profile <b>${esc(e.aws_profile || "default")}</b></span>
+    ${e.aws.ok ? `<span class="chip"><span class="status st-good">AWS ${esc(e.aws.account)}</span></span>`
+      : `<span class="chip" title="${esc(e.aws.error)}">${/Credential|Token|SSO|Expired/.test(e.aws.error) ? `<span class="status st-critical">AWS: no credentials</span> · run <code>aws sso login --profile ${esc(e.aws_profile || "…")}</code>` : `<span class="status st-critical">AWS error</span> ${esc(e.aws.error)}`}</span>`}
+    ${["kubectl", "hey", "uv"].map(tool).join("")}`;
+  const r = state.run;
+  $("#runpill").innerHTML = r?.external_pids?.length && !r.running
+    ? `<span class="status st-warn">Load test running outside the console (pid ${r.external_pids.join(", ")})</span>`
+    : r && r.running
+    ? `<span class="status st-warn">Load test running · ${fmt.age(r.started)}</span>`
+    : r ? `<span class="status ${r.exit_code === 0 ? "st-good" : "st-critical"}">Last run ${r.stopped ? "stopped" : r.exit_code === 0 ? "passed" : "failed (exit " + r.exit_code + ")"}</span>`
+    : `<span class="status st-muted">Idle</span>`;
+}
+
+// ------------------------------------------------------------- backend
+function backendCharts(h, ids) {
+  const pts = k => h.map(p => [p.t, p[k]]);
+  const last = h[h.length - 1] || {};
+  const sh = runWindows();
+  chart($(ids.pods), [
+    {name: "Pods", color: "--s1", points: pts("pods"), step: true},
+    {name: "Ready", color: "--s2", points: pts("ready"), step: true},
+    {name: "HPA desired", color: "--s3", points: pts("hpa_desired"), step: true},
+  ], {title: "Backend pods", y: v => fmt.n(v), shade: sh, max: last.hpa_max, ref: last.hpa_max ? {value: last.hpa_max, label: `maxReplicas ${last.hpa_max}`} : null});
+  chart($(ids.rps), [
+    {name: "All requests", color: "--s1", points: pts("rps")},
+    {name: "5xx", color: "--s2", points: pts("err_rps")},
+  ], {title: "Requests per second", sub: "Summed across pods, from each pod's /metrics counters", y: v => fmt.n(v, 1), shade: sh,
+      empty: "No /metrics data. Deploy the new backend image."});
+}
+
+function renderBackend() {
+  const d = state.backend;
+  $("#be-err").textContent = state.backendErr || d?.latest?.error || "";
+  if (!d) return;
+  const h = d.history, l = d.latest || {};
+  tiles($("#be-tiles"), [
+    ["Pods ready", l.pods != null ? `${l.ready} / ${l.pods}` : "–", l.hpa_max ? `HPA ${l.hpa_min}–${l.hpa_max}, desired ${l.hpa_desired}` : ""],
+    ["CPU (HPA)", fmt.pct(l.cpu_pct), "target 70% of request"],
+    ["Requests/s", fmt.n(l.rps, 1), `${fmt.n(l.in_flight)} in flight`],
+    ["5xx/s", fmt.n(l.err_rps, 1), l.rps ? `${fmt.n(100 * l.err_rps / l.rps, 1)}% of requests` : ""],
+    ["Latency p95", fmt.ms(l.p95_ms), `p50 ${fmt.ms(l.p50_ms)} · p99 ${fmt.ms(l.p99_ms)}`],
+    ["DB pool in use", l.pool_size ? `${l.pool_in_use} / ${l.pool_size}` : "–", "checked out + overflow"],
+  ]);
+  backendCharts(h, {pods: "#c-pods", rps: "#c-rps"});
+  const pts = k => h.map(p => [p.t, p[k]]);
+  const sh = runWindows();
+  chart($("#c-cpu"), [{name: "CPU", color: "--s1", points: pts("cpu_pct")}],
+    {title: "Average CPU, % of request", sub: "From the HPA", y: fmt.pct, ref: {value: 70, label: "HPA target 70%"}, shade: sh});
+  chart($("#c-lat"), [
+    {name: "p50", color: "--s1", points: pts("p50_ms")},
+    {name: "p95", color: "--s2", points: pts("p95_ms")},
+    {name: "p99", color: "--s3", points: pts("p99_ms")},
+  ], {title: "Request latency", sub: "Rolling 60 s window, worst pod", y: fmt.ms, shade: sh, empty: "No /metrics data yet"});
+  chart($("#c-pool"), [{name: "In use", color: "--s1", points: pts("pool_in_use")}],
+    {title: "DB connections in use by the backend", sub: "SQLAlchemy pool, summed across pods (5 per pod + 10 overflow)",
+     y: v => fmt.n(v), shade: sh, empty: "No /metrics data yet"});
+  chart($("#c-mem"), [{name: "Memory", color: "--s1", points: pts("mem_mi")}],
+    {title: "Backend memory, all pods", sub: "kubectl top · limit 256 MiB per pod", y: v => fmt.n(v) + " Mi", shade: sh});
+
+  const pods = l.pod_list || [];
+  table($("#be-pods"), ["Pod", "Status", "Node", "IP", "Age", "Restarts", "CPU", "Memory", "Req/s", "p95", "In flight", "Pool"],
+    pods.map(p => {
+      const m = p.metrics, st = p.phase === "Running" && p.ready ? "st-good" : p.phase === "Running" ? "st-warn" : "st-critical";
+      return [esc(p.name), `<span class="status ${st}">${esc(p.ready ? "Ready" : p.phase)}</span>`, esc(p.node), esc(p.ip), fmt.age(p.created),
+        fmt.n(p.restarts), p.cpu_m != null ? p.cpu_m + "m" : "–", p.mem_mi != null ? p.mem_mi + "Mi" : "–",
+        fmt.n(p.rps, 1), fmt.ms(m?.window?.p95 != null ? m.window.p95 * 1000 : null), m ? fmt.n(m.in_flight) : "–",
+        m?.db_pool?.size != null ? `${m.db_pool.checkedout} / ${m.db_pool.size}${m.db_pool.overflow > 0 ? " +" + m.db_pool.overflow : ""}` : "–"];
+    }), [5, 6, 7, 8, 9, 10]);
+
+  const routes = {};
+  for (const p of pods) for (const r of p.metrics?.by_route || []) {
+    const k = `${r.method} ${r.route}`;
+    routes[k] ??= {total: 0, s: {}};
+    routes[k].total += r.count;
+    routes[k].s[r.status] = (routes[k].s[r.status] || 0) + r.count;
+  }
+  table($("#be-routes"), ["Route", "Requests", "Status codes"],
+    Object.entries(routes).sort((a, b) => b[1].total - a[1].total).map(([k, v]) => [
+      `<code>${esc(k)}</code>`, fmt.n(v.total),
+      Object.entries(v.s).map(([c, n]) => `<span class="${c >= 500 ? "st-critical" : c >= 400 ? "st-warn" : ""}">${c}: ${fmt.n(n)}</span>`).join(" · ")]), [1]);
+}
+
+// ------------------------------------------------------------- database
+function renderDatabase() {
+  const d = state.database;
+  $("#db-err").textContent = state.databaseErr || d?.latest?.error || "";
+  if (d) {
+    const h = d.history, l = d.latest || {}, raw = l.raw;
+    const pts = k => h.map(p => [p.t, p[k]]);
+    tiles($("#db-tiles"), [
+      ["Connections", raw ? `${l.connections} / ${raw.connections.max}` : "–", raw ? `${l.active} active · ${l.idle} idle` : ""],
+      ["Transactions/s", fmt.n(l.tps, 1), ""],
+      ["Cache hit", l.cache_hit_pct != null ? l.cache_hit_pct.toFixed(1) + "%" : "–", "shared buffers"],
+      ["Lock waits", raw ? fmt.n(l.lock_waits) : "–", raw ? `longest query ${fmt.n(l.longest_active_s, 2)} s` : ""],
+      ["Database size", raw ? fmt.bytes(raw.database.size_bytes) : "–", raw ? `${fmt.n(raw.database.deadlocks)} deadlocks total` : ""],
+      ["Rollbacks", raw ? fmt.n(raw.database.xact_rollback) : "–", raw ? `of ${fmt.n(raw.database.xact_commit)} commits` : ""],
+    ]);
+    const sh = runWindows();
+    chart($("#c-tps"), [{name: "TPS", color: "--s1", points: pts("tps")}], {title: "Transactions per second", sub: "commits + rollbacks", y: v => fmt.n(v, 1), shade: sh});
+    chart($("#c-conns"), [
+      {name: "Active", color: "--s1", points: pts("active")},
+      {name: "Idle", color: "--s2", points: pts("idle")},
+    ], {title: "Connections by state", sub: raw ? `max_connections ${raw.connections.max}` : "", y: v => fmt.n(v), shade: sh});
+    chart($("#c-rows"), [
+      {name: "Read", color: "--s1", points: pts("rows_read_s")},
+      {name: "Written", color: "--s2", points: pts("rows_written_s")},
+    ], {title: "Rows per second", y: v => fmt.n(v, 1), shade: sh});
+    chart($("#c-hit"), [{name: "Cache hit", color: "--s1", points: pts("cache_hit_pct")}],
+      {title: "Buffer cache hit ratio", y: v => fmt.n(v, 1) + "%", max: 100, shade: sh});
+    table($("#db-tables"), ["Table", "Live rows", "Dead rows", "Seq scans", "Index scans", "Inserts", "Updates", "Deletes"],
+      (raw?.tables || []).map(t => [esc(t.relname), fmt.n(t.n_live_tup), fmt.n(t.n_dead_tup), fmt.n(t.seq_scan), fmt.n(t.idx_scan),
+        fmt.n(t.n_tup_ins), fmt.n(t.n_tup_upd), fmt.n(t.n_tup_del)]), [1, 2, 3, 4, 5, 6, 7]);
+  }
+
+  const r = state.rds;
+  $("#rds-err").textContent = state.rdsErr || r?.error || "";
+  if (!r || r.error) return;
+  $("#rds-period").textContent = `· ${r.period / 60}-minute datapoints`;
+  const i = r.instance;
+  $("#rds-inst").innerHTML = [["Instance", i.id], ["Status", i.status], ["Class", i.class], ["Engine", i.engine],
+    ["Storage", `${i.storage_gb} GB ${i.storage_type || ""}`], ["Multi-AZ", i.multi_az ? "yes" : `no (${i.az})`]]
+    .map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("");
+  const stClass = s => s === "OK" ? "st-good" : s === "ALARM" ? "st-critical" : "st-muted";
+  table($("#rds-alarms"), ["CloudWatch alarm", "State"],
+    r.alarms.map(a => [`${esc(a.name)}<div class="sub">${esc(a.reason)}</div>`, `<span class="status ${stClass(a.state)}">${esc(a.state)}</span>`]));
+
+  const s = k => r.series[k] || [];
+  const scale = (k, f) => s(k).map(([t, v]) => [t, v * f]);
+  const from = new Date(Date.now() - +$("#rds-min").value * 60e3);
+  chart($("#r-cpu"), [{name: "CPU", color: "--s1", points: s("CPUUtilization")}], {title: "CPU utilisation", y: fmt.pct, max: 100, from, ref: {value: 80, label: "alarm 80%"}});
+  chart($("#r-conn"), [{name: "Connections", color: "--s1", points: s("DatabaseConnections")}], {title: "Database connections", y: v => fmt.n(v), from});
+  chart($("#r-mem"), [{name: "Freeable", color: "--s1", points: s("FreeableMemory")}], {title: "Freeable memory", y: fmt.bytes, from});
+  chart($("#r-iops"), [{name: "Read", color: "--s1", points: s("ReadIOPS")}, {name: "Write", color: "--s2", points: s("WriteIOPS")}], {title: "IOPS", y: v => fmt.n(v, 1), from});
+  chart($("#r-lat"), [{name: "Read", color: "--s1", points: scale("ReadLatency", 1000)}, {name: "Write", color: "--s2", points: scale("WriteLatency", 1000)}], {title: "Disk latency", y: v => fmt.n(v, 2) + " ms", from});
+  chart($("#r-net"), [{name: "Receive", color: "--s1", points: s("NetworkReceiveThroughput")}, {name: "Transmit", color: "--s2", points: s("NetworkTransmitThroughput")}], {title: "Network throughput", y: v => fmt.bytes(v) + "/s", from});
+  chart($("#r-queue"), [{name: "Queue depth", color: "--s1", points: s("DiskQueueDepth")}], {title: "Disk queue depth", y: v => fmt.n(v, 2), from});
+  chart($("#r-disk"), [{name: "Free", color: "--s1", points: s("FreeStorageSpace")}], {title: "Free storage", y: fmt.bytes, from, ref: {value: 2 * 1024 ** 3, label: "alarm 2 GB"}});
+}
+
+// ------------------------------------------------------------- load test
+let es = null, logLines = [];
+function openLog() {
+  if (es) es.close();
+  logLines = [];
+  es = new EventSource(`${API}/runs/current/log?offset=0`);
+  es.onmessage = ev => {
+    const {i, line} = JSON.parse(ev.data);
+    logLines[i] = line;
+    const pre = $("#log"), atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+    pre.textContent = logLines.join("\n");
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  };
+  es.addEventListener("done", ev => { es.close(); es = null; state.run = JSON.parse(ev.data); refreshReports(); render(); });
+  es.onerror = () => { if (!state.run?.running) { es?.close(); es = null; } };
+}
+
+$("#start").onclick = async () => {
+  const f = new FormData($("#runform"));
+  const body = {cleanup: f.get("cleanup") === "on"};
+  for (const k of ["accounts", "concurrency", "requests", "targets", "baseline", "cooldown"]) body[k] = +f.get(k);
+  for (const k of ["url", "duration"]) if (f.get(k).trim()) body[k] = f.get(k).trim();
+  $("#run-msg").textContent = "Starting…";
+  try {
+    const r = await fetch(`${API}/runs`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    const j = await r.json();
+    if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : j.detail.map(d => `${d.loc.at(-1)}: ${d.msg}`).join("; "));
+    state.run = j; $("#run-msg").textContent = ""; openLog();
+  } catch (e) { $("#run-msg").innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+  render();
+};
+$("#stop").onclick = async () => {
+  if (!confirm("Stop the running load test? No report will be written.")) return;
+  await fetch(`${API}/runs/current/stop`, {method: "POST"});
+};
+
+function renderLoadtest() {
+  const r = state.run;
+  const external = !r?.running && r?.external_pids?.length;
+  $("#start").disabled = !!r?.running || !!external;
+  $("#stop").hidden = !r?.running && !external;
+  if (external) $("#run-msg").textContent = `eks-load-test.py is already running outside the console (pid ${r.external_pids.join(", ")}). Stop it before starting another.`;
+  $("#run-cmd").textContent = r?.started ? `· ${r.running ? "running" : "finished"} · started ${fmt.time(r.started)}` : "";
+  if (r && !r.running && r.started && !external) {
+    $("#run-msg").innerHTML = r.report_id
+      ? `Finished. <a href="#" onclick="openReport('${esc(r.report_id)}');return false">Open report ${esc(r.report_id)}</a>`
+      : r.stopped ? "Stopped." : "";
+  }
+  const l = state.backend?.latest || {};
+  tiles($("#run-tiles"), [
+    ["Pods ready", l.pods != null ? `${l.ready} / ${l.pods}` : "–", `HPA desired ${l.hpa_desired ?? "–"}`],
+    ["CPU (HPA)", fmt.pct(l.cpu_pct), ""],
+    ["Requests/s", fmt.n(l.rps, 1), `5xx/s ${fmt.n(l.err_rps, 1)}`],
+    ["Latency p95", fmt.ms(l.p95_ms), ""],
+  ]);
+  const since = r ? +new Date(r.started) - 60e3 : Date.now() - 15 * 60e3;
+  const h = (state.backend?.history || []).filter(p => +new Date(p.t) >= since);
+  backendCharts(h, {pods: "#l-pods", rps: "#l-rps"});
+}
+
+// ------------------------------------------------------------- reports
+async function refreshReports() {
+  try { state.reports = await get("/reports"); } catch (e) { state.reportsErr = e.message; }
+  if (tab === "reports") renderReports();
+}
+window.openReport = async id => {
+  showTab("reports");
+  state.report = {id, loading: true};
+  renderReports();
+  try { state.report = await get(`/reports/${id}`); } catch (e) { state.report = {id, error: e.message}; }
+  renderReports();
+  $("#rep-detail").scrollIntoView({behavior: "smooth", block: "start"});
+};
+
+function renderReports() {
+  const list = state.reports || [];
+  const f = (id, name) => `${API}/reports/${id}/files/${name}`;
+  $("#rep-list").innerHTML = `<thead><tr><th>Started</th><th class="num">Accounts</th><th class="num">Requests</th><th class="num">Success</th>
+    <th class="num">Req/s</th><th class="num">p95</th><th class="num">Pods</th><th>Files</th></tr></thead><tbody>${
+    list.length ? list.map(r => {
+      const h = r.hey_total;
+      const ok = h ? (h.success_pct >= 99 ? "st-good" : h.success_pct >= 90 ? "st-warn" : "st-critical") : "";
+      return `<tr class="click ${state.report?.id === r.id ? "sel" : ""}" data-id="${esc(r.id)}">
+        <td>${fmt.dt(r.started)}${r.complete ? "" : ` <span class="status st-muted">incomplete</span>`}</td>
+        <td class="num">${r.accounts ? `${r.accounts.created}/${r.accounts.total}` : "–"}</td>
+        <td class="num">${h ? fmt.n(h.requests) : "–"}</td>
+        <td class="num">${h ? `<span class="status ${ok}">${h.success_pct.toFixed(1)}%</span>` : "–"}</td>
+        <td class="num">${h ? fmt.n(h.rps, 0) : "–"}</td>
+        <td class="num">${h ? fmt.ms(h.p95 * 1000) : "–"}</td>
+        <td class="num">${r.pods_start != null ? `${r.pods_start} → ${r.pods_peak}` : "–"}</td>
+        <td>${[r.pdf && `<a href="${f(r.id, "eks-load-test-report.pdf")}" target="_blank">PDF</a>`,
+               r.chart && `<a href="${f(r.id, "scaling.png")}" target="_blank">chart</a>`,
+               r.log && `<a href="${f(r.id, "console-run.log")}" target="_blank">log</a>`].filter(Boolean).join(" · ") || "–"}</td></tr>`;
+    }).join("") : `<tr><td colspan="8" class="muted">No reports in loadtest-reports/ yet.</td></tr>`}</tbody>`;
+  $("#rep-list").querySelectorAll("tr.click").forEach(tr => tr.onclick = () => openReport(tr.dataset.id));
+
+  const rep = state.report, el = $("#rep-detail");
+  if (!rep) { el.innerHTML = `<p class="sub" style="margin-top:12px">Pick a report to see its details.</p>`; return; }
+  if (rep.loading) { el.innerHTML = `<p class="sub">Loading…</p>`; return; }
+  if (rep.error) { el.innerHTML = `<p class="err">${esc(rep.error)}</p>`; return; }
+  const d = rep.data;
+  if (!d) {
+    el.innerHTML = `<h2>${fmt.dt(rep.started)}</h2><p class="note">This run did not finish (no samples.json). ${rep.hey_files.map(n => `<a href="${f(rep.id, n)}" target="_blank">${n}</a>`).join(" · ")}</p>`;
+    return;
+  }
+  const h = d.hey_total, s = d.samples;
+  el.innerHTML = `<h2>Report ${esc(rep.id)} <span class="sub">· ${esc(d.cluster?.context || "")}</span></h2>
+    <div class="tiles" id="rep-tiles"></div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card chart" id="rp-pods"></div>
+      <div class="card chart" id="rp-cpu"></div>
+    </div>
+    <h2>Per-target hey results</h2>
+    <div class="card scroll"><table id="rp-hey"></table></div>
+    <h2>Backend pods during the run</h2>
+    <div class="card scroll"><table id="rp-pods-t"></table></div>
+    <h2>Status codes</h2>
+    <div class="card scroll"><table id="rp-status"></table></div>`;
+  tiles($("#rep-tiles"), [
+    ["Requests", fmt.n(h.requests), `${fmt.n(h.errors)} transport errors`],
+    ["Success", h.success_pct.toFixed(1) + "%", `${fmt.n(h.ok)} 2xx/3xx`],
+    ["Throughput", fmt.n(h.rps, 0) + " req/s", `over ${fmt.n(h.duration, 0)} s`],
+    ["Latency p95", fmt.ms(h.p95 * 1000), `avg ${fmt.ms(h.average * 1000)} · p99 ${fmt.ms(h.p99 * 1000)}`],
+    ["Pods", `${rep.pods_start} → ${rep.pods_peak}`, `${rep.new_pods} new pod(s)`],
+    ["Peak CPU", fmt.pct(rep.cpu_peak), "HPA target 70%"],
+  ]);
+  const pts = k => s.map(p => [p.t, p[k]]);
+  const hmax = s.find(p => p.hpa_max)?.hpa_max;
+  chart($("#rp-pods"), [{name: "Pods", color: "--s1", points: pts("pods"), step: true}, {name: "HPA desired", color: "--s2", points: pts("hpa_desired"), step: true}],
+    {title: "Backend pods vs HPA desired", y: v => fmt.n(v), max: hmax, ref: hmax ? {value: hmax, label: `maxReplicas ${hmax}`} : null});
+  chart($("#rp-cpu"), [{name: "CPU", color: "--s1", points: pts("cpu_pct")}], {title: "Average CPU, % of request", y: fmt.pct, ref: {value: 70, label: "HPA target 70%"}});
+  table($("#rp-hey"), ["Target", "Requests", "Req/s", "Avg", "p95", "p99", "Status codes", "Errors"],
+    d.hey.map(r => [esc(r.url.split("/api/")[1] || r.url), fmt.n(Object.values(r.status).reduce((a, b) => a + b, 0) + r.errors.reduce((a, e) => a + e[0], 0)),
+      fmt.n(r.rps, 0), fmt.ms(r.average * 1000), fmt.ms((r.latency["95"] ?? null) * 1000), fmt.ms((r.latency["99"] ?? null) * 1000),
+      Object.entries(r.status).map(([c, n]) => `${c}: ${fmt.n(n)}`).join(" · "), fmt.n(r.errors.reduce((a, e) => a + e[0], 0))]), [1, 2, 3, 4, 5, 7]);
+  table($("#rp-pods-t"), ["Pod", "Node", "Created", "Ready", "Status", "Restarts", "Peak CPU", "Peak mem", "New"],
+    d.pods.map(p => [esc(p.name), esc((p.node || "").split(".")[0]), fmt.time(p.created), fmt.time(p.ready_at), esc(p.phase), fmt.n(p.restarts),
+      p.peak_cpu_m + "m", p.peak_mem_mi + "Mi", p.existed_before ? "no" : "yes"]), [5, 6, 7]);
+  table($("#rp-status"), ["Status", "Responses"],
+    Object.entries(h.status).map(([c, n]) => [esc(c), fmt.n(n)]).concat([["transport errors", fmt.n(h.errors)]]), [1]);
+}
+
+// ------------------------------------------------------------- boot
+$("#rds-min").onchange = async () => {
+  try { state.rds = await get(`/rds?minutes=${$("#rds-min").value}`); } catch (e) { state.rdsErr = e.message; }
+  render();
+};
+(async () => {
+  showTab(tab);
+  poll("env", "/env", 60e3);
+  poll("backend", "/backend", 5e3);
+  poll("database", "/database", 15e3);
+  poll("rds", () => `/rds?minutes=${$("#rds-min").value}`, 60e3);
+  poll("run", "/runs/current", 3e3);
+  refreshReports();
+  setInterval(refreshReports, 30e3);
+  try { const r = await get("/runs/current"); if (r?.started) { state.run = r; openLog(); } } catch {}
+})();
+</script>
+</body>
+</html>
